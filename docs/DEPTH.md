@@ -13,6 +13,7 @@
 | M5 轨段覆盖对账 | 定位覆盖缺口和重叠 | `GET/POST /api/coverage` | `app/coverage/balance.py` | `tests/test_coverage.py` |
 | M6 批次留档复跑 | 运行并找回原始快照 | `POST /api/runs` | `app/archive/save.py` `app/archive/storage.py` | `tests/test_archive.py` |
 | M7 巡检证据签发 | 签发并验证证据件 | `POST /api/runs/{id}/issue` | `app/seals/issue.py` `app/seals/packet.py` | `tests/test_seals.py` |
+| M8 夜巡分批采信 | 分批回传、随采信更新车次复位 | `POST /api/batches/{channel}/messages` | `app/batches/ledger.py` | `tests/test_batches.py` |
 
 ## 陷阱登记
 
@@ -27,5 +28,9 @@
 | TRAP-14 | 同编号异值 | 后写覆盖 | 同组隔离 | `app/capture/resolve.py` | `tests/test_capture.py::test_conflict_keeps_both_sources` |
 | TRAP-19 | 同基点多等级 | 文件顺序决定结果 | 高等级优先，同等级冲突留缺 | `app/anchors/match.py` | `tests/test_anchors.py::test_best_grade_is_order_independent` |
 | TRAP-23 | 正好落在断链处 | 重复投影或误落 | 时间和测距均左闭右开 | `app/chainage/interpolate.py` | `tests/test_chainage.py::test_cut_belongs_to_next_span` |
+| TRAP-27 | 后批同编号异值基点 | 后写覆盖首批里程 | 冲突整组隔离，两份原件留档，首批复位修订仍可查 | `app/batches/ledger.py` | `tests/test_batches.py::test_conflict_batch_keeps_first_reset_and_archives_both` |
+| TRAP-28 | 同份报文重复提交 | 每跑一次新增批次 | 通道内按报文 SHA-256 去重，重跑返回 200 不新增 | `app/batches/ledger.py` | `tests/test_batches.py::test_same_message_rerun_adds_no_batch` |
 
 夜巡样例计划 600000 mm，已映射 400000 mm，掉线缺证 200000 mm。重复巡检 100000 mm 单列。档案事务不会发布半份快照。
+
+分批采信以通道（车次夜班）为单位：每份报文先按 M1 规则单独校验再入档，随后把通道内全部报文拼接重算整条管线，生成一条复位修订（`resets` 表）。报文解析失败在开写锁前抛出，不留下半批；同一份报文（SHA-256 相同）重跑直接取回当前最新修订。拼接件的全局行号通过行号目录（`line_catalog`）回溯到具体报文，冲突隔离记录因此能同时链接两份原件。

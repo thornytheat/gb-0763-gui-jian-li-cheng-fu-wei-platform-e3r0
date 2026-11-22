@@ -21,15 +21,6 @@ function handle(form, action) {
   });
 }
 
-const save = document.querySelector('#save-run');
-handle(save, async () => {
-  const text = document.querySelector('#csv').value;
-  const result = await submit('/api/runs', text ? {csv: text} : {sample: save.dataset.sample});
-  const address = new URL('/work/issue', location.origin);
-  address.search = new URLSearchParams({run: result.run_id, sample: save.dataset.sample});
-  location.assign(address);
-});
-
 const issue = document.querySelector('#issue-run');
 const download = document.querySelector('#download');
 const picker = document.querySelector('#run');

@@ -1,5 +1,52 @@
-<div class="work-grid"><section class="panel"><h3>批次快照</h3>
+<div class="work-grid batch-grid">
+  <section class="panel">
+    <h3>车次复位 · 随报文采信更新 <small id="batch-channel">通道 {{ channel }}</small></h3>
+    <div id="train-board" class="scroll">
+      {% if batch and batch.latest and batch.latest.trains %}
+      {% for train in batch.latest.trains %}
+      <p><b>{{ train.run }}</b> · 可用里程 <b>{{ train.usable_mm }}</b> mm · 校准区间 {{ train.span_count }} 段 · 已复位缺陷 {{ train.projected_count }} 条 · {{ train.chains|join('、') or '无有效区间' }}</p>
+      {% endfor %}
+      {% else %}<p>等待首批报文，采信后即可先行给出可用里程。</p>{% endif %}
+    </div>
+    <h3>同编号异值冲突报文</h3>
+    <div id="conflict-board" class="scroll">
+      {% if batch and batch.latest and batch.latest.conflicts %}
+      {% for row in batch.latest.conflicts %}
+      <details><summary>行 {{ row.sources|join('、') }} · {{ row.label }}</summary>
+        <p>来源报文：{% for mid in row.message_refs %}<a href="/api/batches/{{ channel }}/messages/{{ mid }}/raw"><code>{{ mid[:12] }}</code></a>{% if not loop.last %}、{% endif %}{% endfor %}</p></details>
+      {% endfor %}
+      {% else %}<p>暂无同编号异值冲突。</p>{% endif %}
+    </div>
+  </section>
+  <section class="panel">
+    <h3>夜巡报文分批回传</h3>
+    <form id="ingest-message" data-channel="{{ channel }}">
+      <label for="message-csv">单批 CSV</label>
+      <textarea id="message-csv" rows="6" placeholder="粘贴本批报文，留空则提交当前样例整份报文"></textarea>
+      <button>采信并重算</button>
+    </form>
+    <p>处理失败可直接重试；同一份报文重跑不会新增批次。</p>
+  </section>
+</div>
+<div class="work-grid batch-grid">
+  <section class="panel"><h3>已采信报文（{{ batch.messages|length if batch else 0 }} 份）</h3>
+    <div id="message-board" class="scroll">
+      {% if batch %}{% for item in batch.messages %}
+      <p>#{{ item.seq }} <a href="/api/batches/{{ channel }}/messages/{{ item.message_id }}/raw"><code>{{ item.message_id[:12] }}</code></a> · {{ item.accepted }} 采信 / {{ item.isolated }} 隔离 · <small>{{ item.received_at }}</small></p>
+      {% else %}<p>尚无报文入档。</p>{% endfor %}{% else %}<p>尚无报文入档。</p>{% endif %}
+    </div>
+  </section>
+  <section class="panel"><h3>每次复位结果</h3>
+    <div id="reset-board" class="scroll">
+      {% if batch %}{% for item in batch.resets %}
+      <p><a href="/work/resets/{{ item.reset_id }}"><code>{{ item.reset_id[:12] }}</code></a> · 第 {{ item.seq }} 次复位 · 报文 {{ item.message_count }} 份 · 冲突 {{ item.conflict_count }} 组 · <small>{{ item.created_at }}</small></p>
+      {% else %}<p>尚无复位修订。</p>{% endfor %}{% else %}<p>尚无复位修订。</p>{% endif %}
+    </div>
+  </section>
+</div>
+<section class="panel"><h3>归档报文 · 批次快照（整份复算归档）</h3>
+<form id="save-run" data-sample="{{ label }}">
+  <label for="csv">自填 CSV</label><textarea id="csv" rows="5" placeholder="留空使用当前样例"></textarea><button>复算并归档</button>
+</form>
 {% for run in ledger %}<p><a href="{{ url_for('track_web.screen',section='issue',run=run.run_id,sample=label) }}"><code>{{ run.run_id[:16] }}</code></a> · {{ run.summary.mapped_mm }} mm <small>{{ run.created_at }}</small></p>{% else %}<p>等待首次归档。</p>{% endfor %}
-</section><section class="panel"><h3>归档报文</h3><form id="save-run" data-sample="{{ label }}">
-<label for="csv">自填 CSV</label><textarea id="csv" rows="7" placeholder="留空使用当前样例"></textarea><button>复算并归档</button>
-</form></section></div>
+</section>
